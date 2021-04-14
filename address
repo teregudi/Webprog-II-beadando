@@ -1,0 +1,93 @@
+#!/bin/bash
+
+#######functions#################################################################
+
+usage(){
+    echo "	$0 [-s name] [-a] [-d name] [-l]"
+    echo "	-s - find a record in the database by name"
+    echo "	-a - add a record to the database"
+    echo "	-d - remove the records containing the name given after -d"
+    echo "	-l - list all the records in the database"
+    exit
+}
+
+search(){
+    RETURN_VALUE=1
+    LINE_NUMBER=0
+    for I in $(cat addresslib.txt | cut -d : -f 1 | tr ' ' '_'); do
+	LINE_NUMBER=$(expr $LINE_NUMBER + 1)
+	I=$(echo $I | tr '_' ' ')
+	for J in $I; do
+	    if [ $J = $1 ]; then
+		display $LINE_NUMBER
+		RETURN_VALUE=0
+	    fi
+	done
+    done
+    LINE_NUMBER=0
+    for I in $(cat addresslib.txt | cut -d : -f 2 | tr ' ' '_'); do
+	LINE_NUMBER=$(expr $LINE_NUMBER + 1)
+	I=$(echo $I | tr '_' ' ')
+	for J in $I; do
+	    if [ $J = $1 ]; then
+		display $LINE_NUMBER
+		RETURN_VALUE=0
+	    fi
+	done
+    done
+    return $RETURN_VALUE
+}
+
+addEntry(){
+    echo -n "First name: "
+    read FNAME
+    echo -n "Surname: "
+    read SNAME
+    echo -n "Address: "
+    read ADDRESS
+    echo -n "Email: "
+    read EMAIL
+    echo "$FNAME:$SNAME:$ADDRESS:$EMAIL" >> addresslib.txt
+}
+
+delete(){
+    sed -i '/'${1}'/d' addresslib.txt
+}
+
+display(){
+    RECORD=$(sed -n ${1}p addresslib.txt)
+    echo "	Name: `echo $RECORD | cut -d : -f 1` `echo $RECORD | cut -d : -f 2`"
+    echo "	Address: `echo $RECORD | cut -d : -f 3`"
+    echo "	Email: `echo $RECORD | cut -d : -f 4`"
+}
+
+######main program#################################################################################
+
+if [ ! -e addresslib.txt ]; then
+    touch addresslib.txt
+fi
+
+while getopts 's:ad:lh?' opt
+do
+    case $opt in
+	s)	search $OPTARG
+		if [ $? -eq 1 ]; then
+		    echo "Record not found"
+		fi ;;
+	a)	addEntry ;;
+	d)	search $OPTARG
+		if [ $? -eq 1 ]; then
+		    echo "Record not found, nothing to delete"
+		else
+		    echo "Found the entries above. Are you sure you want to delete them? [y|n]"
+		    read ANSWER
+		    [ $ANSWER = y ] && delete $OPTARG
+		fi ;;
+	l)	LINE_NUMBER=0;
+		for I in $(cat addresslib.txt | tr ' ' '_'); do
+		    LINE_NUMBER=$(expr $LINE_NUMBER + 1)
+		    display $LINE_NUMBER
+		done ;;
+	h|?)	usage ;;
+    esac
+done
